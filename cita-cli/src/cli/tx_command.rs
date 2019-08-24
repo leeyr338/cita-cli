@@ -115,6 +115,12 @@ pub fn tx_command() -> App<'static, 'static> {
                         .validator(|content| is_hex(content.as_str()))
                         .required(true)
                         .help("UnverifiedTransaction content"),
+                )
+                .arg(
+                    Arg::with_name("file")
+                        .long("file")
+                        .takes_value(true)
+                        .help("content data file path")
                 ),
         )
 }
@@ -177,7 +183,15 @@ pub fn tx_processor(
         }
         ("decode-unverifiedTransaction", Some(m)) => {
             let encryption = encryption(sub_matches, config);
-            let content = m.value_of("content").unwrap();
+            let content = m.value_of("content");
+            let content_file = m.value_of("file");
+            let content_data = match content {
+              Some(data) => data.to_owned(),
+                None => match content_file {
+                    Some(file) => File::open(path).map_err(|err| format!("{}", err))?,
+                    None => return Err("No input content data".to_owned()),
+                }
+            };
             let tx = UnverifiedTransaction::from_str(&content).map_err(|err| format!("{}", err))?;
             printer.println(&tx.to_json(encryption)?, is_color);
             return Ok(());
